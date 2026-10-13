@@ -2,8 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
+  namespace: keycloak
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: keycloak
@@ -14,26 +17,58 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:26.8.0
+          image: quay.io/keycloak/keycloak:26.3.3
           args:
-            - start-dev
+            - start
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
           env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres.keycloak.svc.cluster.local:5432/keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-secret
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-secret
+                  key: password
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: keycloak-admin
+                  name: keycloak-admin-secret
                   key: username
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: keycloak-admin
+                  name: keycloak-admin-secret
                   key: password
+            - name: KC_HOSTNAME
+              value: https://keycloak.home.arpa
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "250m"
+              cpu: 250m
+              memory: 768Mi
             limits:
-              memory: "2Gi"
-              cpu: "1000m"
+              cpu: "2"
+              memory: 2Gi
