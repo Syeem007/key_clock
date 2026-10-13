@@ -7,7 +7,6 @@ spec:
   tls:
     - hosts:
         - keycloak.home.arpa
-      secretName: keycloak-tls
   rules:
     - host: keycloak.home.arpa
       http:
